@@ -1,0 +1,86 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nodecanon"
+version = "0.1.0"
+description = "Entity resolution and deduplication for LLM-extracted knowledge graphs"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Muhammed Rasin", email = "rasinbinabdulla@gmail.com" }]
+keywords = [
+    "knowledge-graph",
+    "entity-resolution",
+    "graphrag",
+    "deduplication",
+    "nlp",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "sentence-transformers>=2.7",
+    "rapidfuzz>=3.0",
+    "jellyfish>=1.0",
+    "networkx>=3.0",
+    "pandas>=2.0",
+    "pyarrow>=14.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+llamaindex = ["llama-index-core>=0.10"]
+lightrag = ["lightrag-hku>=1.0"]
+neo4j = ["neo4j>=5.0"]
+llm = ["openai>=1.0", "anthropic>=0.25"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+all = [
+    "nodecanon[llamaindex]",
+    "nodecanon[lightrag]",
+    "nodecanon[neo4j]",
+    "nodecanon[llm]",
+]
+
+[project.scripts]
+nodecanon = "nodecanon.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/muhammedrasin/nodecanon"
+Issues = "https://github.com/muhammedrasin/nodecanon/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nodecanon"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["nodecanon"]
+omit = ["tests/*", "examples/*", "benchmarks/*"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
