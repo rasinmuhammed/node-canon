@@ -1,4 +1,5 @@
 """Shared fixtures for all tests."""
+
 from __future__ import annotations
 
 import pytest
@@ -48,6 +49,11 @@ def conflict_graph() -> KGGraph:
 @pytest.fixture
 def large_graph() -> KGGraph:
     """Graph with many nodes for blocker/performance tests."""
-    nodes = [KGNode(id=f"n{i}", name=f"Entity {i}", type="ORGANIZATION") for i in range(200)]
-    edges = [KGEdge(source_id=f"n{i}", target_id=f"n{i+1}", relation="RELATED_TO") for i in range(199)]
+    nodes = [
+        KGNode(id=f"n{i}", name=f"Entity {i}", type="ORGANIZATION") for i in range(200)
+    ]
+    edges = [
+        KGEdge(source_id=f"n{i}", target_id=f"n{i + 1}", relation="RELATED_TO")
+        for i in range(199)
+    ]
     return KGGraph(nodes=nodes, edges=edges)

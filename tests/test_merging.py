@@ -1,4 +1,5 @@
 """Tests for merging layer."""
+
 from __future__ import annotations
 
 import pytest
@@ -22,6 +23,7 @@ def _sv(**kwargs: float) -> ScoreVector:
 # ---------------------------------------------------------------------------
 # ConflictDetector
 # ---------------------------------------------------------------------------
+
 
 class TestConflictDetector:
     def test_person_vs_organization_is_conflict(self) -> None:
@@ -72,6 +74,7 @@ class TestConflictDetector:
 # NodeMerger — select_canonical
 # ---------------------------------------------------------------------------
 
+
 class TestNodeMergerSelectCanonical:
     def test_highest_degree_chosen(self) -> None:
         graph = KGGraph(
@@ -98,7 +101,9 @@ class TestNodeMergerSelectCanonical:
         graph = KGGraph(
             nodes=[
                 KGNode(id="a", name="IBM", description="Short."),
-                KGNode(id="b", name="I.B.M.", description="A longer description that wins."),
+                KGNode(
+                    id="b", name="I.B.M.", description="A longer description that wins."
+                ),
             ],
             edges=[],  # equal degree (0), so description breaks the tie
         )
@@ -117,6 +122,7 @@ class TestNodeMergerSelectCanonical:
 # ---------------------------------------------------------------------------
 # NodeMerger — merge
 # ---------------------------------------------------------------------------
+
 
 class TestNodeMergerMerge:
     def test_provenance_fields_set(self) -> None:
@@ -141,7 +147,9 @@ class TestNodeMergerMerge:
 
     def test_longest_description_kept(self) -> None:
         canonical = KGNode(id="a", name="IBM", description="Short.")
-        alias = KGNode(id="b", name="I.B.M.", description="A much longer description here.")
+        alias = KGNode(
+            id="b", name="I.B.M.", description="A much longer description here."
+        )
         merged, _ = NodeMerger().merge(canonical, [alias], _sv())
         assert merged.description == "A much longer description here."
 
@@ -196,6 +204,7 @@ class TestNodeMergerMerge:
 # ---------------------------------------------------------------------------
 # EdgeMerger
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeMerger:
     def test_alias_edges_redirected_to_canonical(self) -> None:

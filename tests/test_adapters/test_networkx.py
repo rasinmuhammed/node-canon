@@ -1,4 +1,5 @@
 """Tests for NetworkX adapter."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,9 @@ from nodecanon.core.models import KGEdge, KGGraph, KGNode
 def _sample_graph() -> KGGraph:
     return KGGraph(
         nodes=[
-            KGNode(id="n1", name="IBM", type="ORGANIZATION", description="A tech company."),
+            KGNode(
+                id="n1", name="IBM", type="ORGANIZATION", description="A tech company."
+            ),
             KGNode(id="n2", name="Ginni Rometty", type="PERSON"),
             KGNode(id="n3", name="Watson", attributes={"category": "AI"}),
         ],
@@ -83,6 +86,7 @@ class TestNetworkXAdapter:
 
     def test_missing_name_raises_descriptive_error(self) -> None:
         import networkx as nx
+
         G = nx.DiGraph()
         G.add_node("n1")  # no "name" attribute
         with pytest.raises(ValueError, match="no 'name' attribute"):
@@ -90,6 +94,7 @@ class TestNetworkXAdapter:
 
     def test_missing_relation_defaults(self) -> None:
         import networkx as nx
+
         G = nx.DiGraph()
         G.add_node("a", name="A")
         G.add_node("b", name="B")

@@ -1,9 +1,16 @@
 """Tests for evaluation module."""
+
 from __future__ import annotations
 
 import pytest
 
-from nodecanon.core.models import KGGraph, KGNode, MergeConflict, MergeRecord, ScoreVector
+from nodecanon.core.models import (
+    KGGraph,
+    KGNode,
+    MergeConflict,
+    MergeRecord,
+    ScoreVector,
+)
 from nodecanon.evaluation.metrics import MergeReport, QADeltaReport, evaluate
 
 
@@ -12,7 +19,9 @@ def _sv() -> ScoreVector:
 
 
 def _record(canonical: str, merged: list[str]) -> MergeRecord:
-    return MergeRecord(canonical_id=canonical, merged_ids=merged, score=_sv(), strategy="rule_based")
+    return MergeRecord(
+        canonical_id=canonical, merged_ids=merged, score=_sv(), strategy="rule_based"
+    )
 
 
 class TestMergeReport:
@@ -51,7 +60,9 @@ class TestMergeReport:
 
     def test_str_mentions_conflicts(self) -> None:
         sv = _sv()
-        conflict = MergeConflict(node_id_a="x", node_id_b="y", score=sv, conflict_reason="test")
+        conflict = MergeConflict(
+            node_id_a="x", node_id_b="y", score=sv, conflict_reason="test"
+        )
         report = MergeReport(
             original_node_count=10,
             resolved_node_count=9,
@@ -62,15 +73,21 @@ class TestMergeReport:
 
 class TestQADeltaReport:
     def test_delta_positive(self) -> None:
-        r = QADeltaReport(baseline_accuracy=0.70, resolved_accuracy=0.85, dataset="HotpotQA")
+        r = QADeltaReport(
+            baseline_accuracy=0.70, resolved_accuracy=0.85, dataset="HotpotQA"
+        )
         assert r.delta == pytest.approx(0.15)
 
     def test_delta_negative(self) -> None:
-        r = QADeltaReport(baseline_accuracy=0.80, resolved_accuracy=0.75, dataset="test")
+        r = QADeltaReport(
+            baseline_accuracy=0.80, resolved_accuracy=0.75, dataset="test"
+        )
         assert r.delta == pytest.approx(-0.05)
 
     def test_str_contains_dataset(self) -> None:
-        r = QADeltaReport(baseline_accuracy=0.70, resolved_accuracy=0.85, dataset="HotpotQA")
+        r = QADeltaReport(
+            baseline_accuracy=0.70, resolved_accuracy=0.85, dataset="HotpotQA"
+        )
         assert "HotpotQA" in str(r)
 
 

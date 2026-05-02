@@ -3,6 +3,7 @@
 Uses _PairwiseScorer to avoid loading the sentence-transformers model in CI.
 All tests are fully deterministic.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -12,10 +13,10 @@ from nodecanon.core.models import KGEdge, KGGraph, KGNode, ScoreVector
 from nodecanon.core.resolver import Resolver
 from nodecanon.core.scoring import NodeScorer
 
-
 # ---------------------------------------------------------------------------
 # Test helper: fixed-score scorer that needs no embedding model
 # ---------------------------------------------------------------------------
+
 
 class _PairwiseScorer(NodeScorer):
     """Returns pre-defined ScoreVectors for specific node-id pairs."""
@@ -53,7 +54,10 @@ def _low_sv() -> ScoreVector:
 # Helpers that build resolvers with controlled scorers
 # ---------------------------------------------------------------------------
 
-def _resolver(scores: dict[tuple[str, str], ScoreVector], threshold: float = 0.75) -> Resolver:
+
+def _resolver(
+    scores: dict[tuple[str, str], ScoreVector], threshold: float = 0.75
+) -> Resolver:
     return Resolver(
         scorer=_PairwiseScorer(scores),
         matcher=RuleBasedMatcher(threshold=threshold),
@@ -63,6 +67,7 @@ def _resolver(scores: dict[tuple[str, str], ScoreVector], threshold: float = 0.7
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestResolver:
     def test_no_duplicates_unchanged(self, no_duplicate_graph: KGGraph) -> None:
@@ -78,8 +83,8 @@ class TestResolver:
         result = resolver.resolve(simple_graph)
 
         node_ids = {n.id for n in result.graph.nodes}
-        assert len(result.graph.nodes) == 2   # IBM + Ginni Rometty
-        assert "n3" in node_ids               # Ginni Rometty unchanged
+        assert len(result.graph.nodes) == 2  # IBM + Ginni Rometty
+        assert "n3" in node_ids  # Ginni Rometty unchanged
         assert len(result.merge_records) == 1
         assert set(result.merge_records[0].merged_ids) <= {"n1", "n2"}
 
@@ -108,8 +113,8 @@ class TestResolver:
             matcher=RuleBasedMatcher(threshold=0.75),
         )
         result = resolver.resolve(conflict_graph)
-        assert len(result.graph.nodes) == 2   # not merged
-        assert len(result.conflicts) == 1     # surfaced as conflict
+        assert len(result.graph.nodes) == 2  # not merged
+        assert len(result.conflicts) == 1  # surfaced as conflict
         assert result.merge_records == []
 
     def test_provenance_on_merged_node(self, simple_graph: KGGraph) -> None:
@@ -153,10 +158,12 @@ class TestResolver:
                 KGEdge(source_id="c", target_id="d", relation="PRODUCT"),
             ],
         )
-        resolver = _resolver({
-            ("a", "b"): _high_sv(),
-            ("b", "c"): _high_sv(),
-        })
+        resolver = _resolver(
+            {
+                ("a", "b"): _high_sv(),
+                ("b", "c"): _high_sv(),
+            }
+        )
         result = resolver.resolve(graph)
         # a, b, c → one canonical + Watson = 2 nodes total
         assert len(result.graph.nodes) == 2
@@ -178,9 +185,7 @@ class TestResolver:
         resolver = _resolver({("a", "b"): _high_sv()})
         result = resolver.resolve(graph)
         # Both edges should converge on the canonical node → deduplicated to one
-        edges_to_watson = [
-            e for e in result.graph.edges if e.target_id == "c"
-        ]
+        edges_to_watson = [e for e in result.graph.edges if e.target_id == "c"]
         assert len(edges_to_watson) == 1
 
     def test_self_loop_edge_not_in_result(self) -> None:

@@ -1,4 +1,5 @@
 """Tests for matching layer."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -48,16 +49,24 @@ class TestRuleBasedMatcher:
         # name=1.0, sem=1.0, type=0.5 → 0.30 + 0.25 + 0.10 = 0.65 … still not.
         # Easiest: use custom weights summing to threshold.
         sv = _sv(name=0.75)
-        weights = {"name_similarity": 1.0, "semantic_similarity": 0.0,
-                   "type_agreement": 0.0, "neighbor_overlap": 0.0,
-                   "description_similarity": 0.0}
+        weights = {
+            "name_similarity": 1.0,
+            "semantic_similarity": 0.0,
+            "type_agreement": 0.0,
+            "neighbor_overlap": 0.0,
+            "description_similarity": 0.0,
+        }
         matcher = RuleBasedMatcher(threshold=0.75, weights=weights)
         assert matcher.is_match(_NODE_A, _NODE_B, sv) is True
 
     def test_just_below_threshold_not_match(self) -> None:
-        weights = {"name_similarity": 1.0, "semantic_similarity": 0.0,
-                   "type_agreement": 0.0, "neighbor_overlap": 0.0,
-                   "description_similarity": 0.0}
+        weights = {
+            "name_similarity": 1.0,
+            "semantic_similarity": 0.0,
+            "type_agreement": 0.0,
+            "neighbor_overlap": 0.0,
+            "description_similarity": 0.0,
+        }
         matcher = RuleBasedMatcher(threshold=0.75, weights=weights)
         sv = _sv(name=0.749)
         assert matcher.is_match(_NODE_A, _NODE_B, sv) is False
@@ -72,9 +81,13 @@ class TestRuleBasedMatcher:
 
     def test_custom_weights_respected(self) -> None:
         # Weight neighbor_overlap at 1.0, everything else 0.
-        weights = {"name_similarity": 0.0, "semantic_similarity": 0.0,
-                   "type_agreement": 0.0, "neighbor_overlap": 1.0,
-                   "description_similarity": 0.0}
+        weights = {
+            "name_similarity": 0.0,
+            "semantic_similarity": 0.0,
+            "type_agreement": 0.0,
+            "neighbor_overlap": 1.0,
+            "description_similarity": 0.0,
+        }
         matcher = RuleBasedMatcher(threshold=0.75, weights=weights)
         sv_high = _sv(neighbor=0.9)
         sv_low = _sv(neighbor=0.3)
@@ -84,9 +97,13 @@ class TestRuleBasedMatcher:
 
 class TestLLMAssistedMatcher:
     def _matcher(self, low: float = 0.65, high: float = 0.80) -> LLMAssistedMatcher:
-        weights = {"name_similarity": 1.0, "semantic_similarity": 0.0,
-                   "type_agreement": 0.0, "neighbor_overlap": 0.0,
-                   "description_similarity": 0.0}
+        weights = {
+            "name_similarity": 1.0,
+            "semantic_similarity": 0.0,
+            "type_agreement": 0.0,
+            "neighbor_overlap": 0.0,
+            "description_similarity": 0.0,
+        }
         rule = RuleBasedMatcher(threshold=high, weights=weights)
         return LLMAssistedMatcher(rule, ambiguous_low=low, ambiguous_high=high)
 

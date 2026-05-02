@@ -1,5 +1,12 @@
-from nodecanon.core.models import KGEdge, KGGraph, KGNode, MergeConflict, MergeRecord, ScoreVector
-from nodecanon.core.resolver import ResolveResult, Resolver
+from nodecanon.core.models import (
+    KGEdge,
+    KGGraph,
+    KGNode,
+    MergeConflict,
+    MergeRecord,
+    ScoreVector,
+)
+from nodecanon.core.resolver import Resolver, ResolveResult
 
 __version__ = "0.1.0"
 

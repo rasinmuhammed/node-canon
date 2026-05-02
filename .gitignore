@@ -161,3 +161,6 @@ ARCHITECTURE.md
 claude.md
 BENCHMARKS.md
 PROGRESS.md
+
+# nodecanon embedding cache
+.nodecanon/

@@ -89,9 +89,7 @@ Answer with ONLY "yes" or "no".\
         weighted = score.weighted_sum(self.rule_matcher.weights)
         return self.ambiguous_low <= weighted < self.ambiguous_high
 
-    def _build_prompt(
-        self, node_a: KGNode, node_b: KGNode, score: ScoreVector
-    ) -> str:
+    def _build_prompt(self, node_a: KGNode, node_b: KGNode, score: ScoreVector) -> str:
         return self._PROMPT_TEMPLATE.format(
             name_a=node_a.name,
             type_a=node_a.type or "unknown",

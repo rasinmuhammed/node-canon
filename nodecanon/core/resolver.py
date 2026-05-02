@@ -129,9 +129,7 @@ class Resolver:
         scored: list[tuple[KGNode, KGNode, ScoreVector]] = [
             (a, b, self.scorer.score(a, b, graph)) for a, b in candidates
         ]
-        scored.sort(
-            key=lambda t: t[2].weighted_sum(self.scorer.weights), reverse=True
-        )
+        scored.sort(key=lambda t: t[2].weighted_sum(self.scorer.weights), reverse=True)
 
         for node_a, node_b, sv in scored:
             conflict = self.conflict_detector.detect(node_a, node_b, sv)
@@ -149,7 +147,7 @@ class Resolver:
         resolved_nodes: list[KGNode] = []
         alias_to_canonical: dict[str, str] = {}
 
-        for root, member_ids in uf.groups().items():
+        for _root, member_ids in uf.groups().items():
             if len(member_ids) == 1:
                 resolved_nodes.append(node_idx[member_ids[0]])
                 continue
@@ -215,8 +213,10 @@ class Resolver:
             TypeCompatibilityBlocker,
         )
 
-        return UnionBlocker([
-            TokenOverlapBlocker(),
-            NGramFingerprintBlocker(),
-            TypeCompatibilityBlocker(),
-        ])
+        return UnionBlocker(
+            [
+                TokenOverlapBlocker(),
+                NGramFingerprintBlocker(),
+                TypeCompatibilityBlocker(),
+            ]
+        )

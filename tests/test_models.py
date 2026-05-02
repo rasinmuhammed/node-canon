@@ -1,9 +1,14 @@
 """Tests for core data models."""
+
 from __future__ import annotations
 
 import pytest
 
-from nodecanon.core.models import KGEdge, KGGraph, KGNode, MergeConflict, MergeRecord, ScoreVector
+from nodecanon.core.models import (
+    KGGraph,
+    KGNode,
+    ScoreVector,
+)
 
 
 class TestKGNode:
@@ -56,15 +61,24 @@ class TestScoreVector:
 
     def test_custom_weights(self) -> None:
         sv = ScoreVector(1.0, 0.0, 0.0, 0.0, 0.0)
-        result = sv.weighted_sum({"name_similarity": 1.0, "semantic_similarity": 0.0,
-                                  "type_agreement": 0.0, "neighbor_overlap": 0.0,
-                                  "description_similarity": 0.0})
+        result = sv.weighted_sum(
+            {
+                "name_similarity": 1.0,
+                "semantic_similarity": 0.0,
+                "type_agreement": 0.0,
+                "neighbor_overlap": 0.0,
+                "description_similarity": 0.0,
+            }
+        )
         assert result == pytest.approx(1.0)
 
     def test_to_dict_keys(self) -> None:
         sv = ScoreVector(0.1, 0.2, 0.3, 0.4, 0.5)
         d = sv.to_dict()
         assert set(d.keys()) == {
-            "name_similarity", "semantic_similarity", "type_agreement",
-            "neighbor_overlap", "description_similarity",
+            "name_similarity",
+            "semantic_similarity",
+            "type_agreement",
+            "neighbor_overlap",
+            "description_similarity",
         }

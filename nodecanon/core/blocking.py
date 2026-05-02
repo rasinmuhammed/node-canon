@@ -9,11 +9,37 @@ from nodecanon.core.models import KGGraph, KGNode
 
 # Common words that add no discriminative value as blocking keys.
 # Includes corporate suffixes so "Apple Inc" / "Google Inc" don't pair on "inc".
-_STOPWORDS = frozenset({
-    "a", "an", "the", "and", "or", "of", "in", "on", "at", "to", "for",
-    "is", "are", "was", "were", "be", "been", "have", "has", "had",
-    "inc", "corp", "llc", "ltd", "co", "group", "holdings",
-})
+_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "of",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "have",
+        "has",
+        "had",
+        "inc",
+        "corp",
+        "llc",
+        "ltd",
+        "co",
+        "group",
+        "holdings",
+    }
+)
 
 _MIN_TOKEN_LEN: int = 2
 _PUNCT_RE = re.compile(r"[^a-z0-9]")
@@ -93,7 +119,9 @@ class TokenOverlapBlocker(BaseBlocker):
                 pair_counts[key] = pair_counts.get(key, 0) + 1
                 pair_nodes.setdefault(key, (a, b))
 
-        return [v for k, v in pair_nodes.items() if pair_counts[k] >= self.min_shared_tokens]
+        return [
+            v for k, v in pair_nodes.items() if pair_counts[k] >= self.min_shared_tokens
+        ]
 
 
 class NGramFingerprintBlocker(BaseBlocker):
@@ -170,9 +198,7 @@ class TypeCompatibilityBlocker(BaseBlocker):
             if a in cluster and b in cluster:
                 return True
         # Unknown type → conservative: let scoring decide, not blocking.
-        if a not in self._known or b not in self._known:
-            return True
-        return False
+        return bool(a not in self._known or b not in self._known)
 
 
 class UnionBlocker(BaseBlocker):

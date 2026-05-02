@@ -1,4 +1,5 @@
 """Tests for blocking layer."""
+
 from __future__ import annotations
 
 from nodecanon.core.blocking import (
@@ -65,7 +66,7 @@ class TestTokenOverlapBlocker:
             edges=[],
         )
         ids = _pair_ids(TokenOverlapBlocker(min_shared_tokens=2).candidate_pairs(graph))
-        assert ("n1", "n2") in ids   # share "new" + "york" = 2
+        assert ("n1", "n2") in ids  # share "new" + "york" = 2
         assert ("n1", "n3") not in ids  # share only "new" = 1
         assert ("n2", "n3") not in ids  # share only "new" = 1
 
@@ -232,7 +233,7 @@ class TestUnionBlocker:
         )
         union = UnionBlocker([TokenOverlapBlocker(), TypeCompatibilityBlocker()])
         ids = _pair_ids(union.candidate_pairs(graph))
-        assert ("n1", "n2") in ids      # ORGANIZATION + COMPANY → compatible
+        assert ("n1", "n2") in ids  # ORGANIZATION + COMPANY → compatible
         assert ("n1", "n3") not in ids  # ORGANIZATION + PERSON → incompatible
         assert ("n2", "n3") not in ids  # COMPANY + PERSON → incompatible
 
@@ -257,8 +258,8 @@ class TestUnionBlocker:
     def test_null_types_pass_filter_by_default(self) -> None:
         graph = KGGraph(
             nodes=[
-                KGNode(id="n1", name="IBM"),          # type=None
-                KGNode(id="n2", name="IBM Inc"),       # type=None
+                KGNode(id="n1", name="IBM"),  # type=None
+                KGNode(id="n2", name="IBM Inc"),  # type=None
             ],
             edges=[],
         )

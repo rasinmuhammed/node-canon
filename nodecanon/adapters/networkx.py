@@ -80,8 +80,15 @@ class NetworkXAdapter(BaseAdapter):
 
     def from_networkx(self, nx_graph: Any) -> KGGraph:
         """Convert a networkx.Graph or DiGraph to KGGraph."""
-        _RESERVED = {"name", "type", "description", "source_chunks",
-                     "_merged_from", "_merge_strategy", "_resolved_types"}
+        _RESERVED = {
+            "name",
+            "type",
+            "description",
+            "source_chunks",
+            "_merged_from",
+            "_merge_strategy",
+            "_resolved_types",
+        }
 
         nodes: list[KGNode] = []
         for node_id, data in nx_graph.nodes(data=True):
