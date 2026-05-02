@@ -166,12 +166,15 @@ class TypeCompatibilityBlocker(BaseBlocker):
     """
 
     DEFAULT_COMPATIBILITY: dict[str, set[str]] = {
-        "ORGANIZATION": {"ORGANIZATION", "COMPANY", "CORP", "FIRM", "INSTITUTION"},
-        "PERSON": {"PERSON", "INDIVIDUAL", "HUMAN", "RESEARCHER", "AUTHOR"},
-        "LOCATION": {"LOCATION", "PLACE", "CITY", "COUNTRY", "REGION", "GPE"},
+        "ORGANIZATION": {
+            "ORGANIZATION", "COMPANY", "CORP", "CORPORATION", "FIRM", "INSTITUTION",
+            "STARTUP", "AGENCY", "ASSOCIATION", "FOUNDATION", "UNIVERSITY",
+        },
+        "PERSON": {"PERSON", "INDIVIDUAL", "HUMAN", "RESEARCHER", "AUTHOR", "SCIENTIST"},
+        "LOCATION": {"LOCATION", "PLACE", "CITY", "COUNTRY", "REGION", "GPE", "AREA"},
         "PRODUCT": {"PRODUCT", "SOFTWARE", "SERVICE", "TOOL", "SYSTEM", "PLATFORM"},
         "EVENT": {"EVENT", "INCIDENT", "OCCURRENCE"},
-        "CONCEPT": {"CONCEPT", "IDEA", "TOPIC", "THEORY", "METHOD"},
+        "CONCEPT": {"CONCEPT", "IDEA", "TOPIC", "THEORY", "METHOD", "TECHNIQUE"},
     }
 
     def __init__(

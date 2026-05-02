@@ -212,15 +212,20 @@ class NodeScorer:
         return float(np.clip(np.dot(emb_a, emb_b), 0.0, 1.0))
 
     def _type_agreement(self, a: KGNode, b: KGNode) -> float:
-        """1.0 if types are compatible, 0.0 if incompatible, 0.5 if unknown.
+        """1.0 if both types are known-compatible, 0.0 if known-incompatible, 0.5 if unknown.
 
-        0.5 when either type is None: absence of type information is neutral,
-        not a positive or negative signal.
+        "Unknown" means either type is None OR not in the compatibility map.
+        We don't reward unknown types with 1.0 — that caused wrong merges when
+        LLMs invented types like FRUIT or STARTUP that aren't in the map.
         """
         if a.type is None or b.type is None:
             return 0.5
-        if a.type.upper() == b.type.upper():
+        a_up, b_up = a.type.upper(), b.type.upper()
+        if a_up == b_up:
             return 1.0
+        known = self._type_compat._known
+        if a_up not in known or b_up not in known:
+            return 0.5
         return 1.0 if self._type_compat.are_compatible(a.type, b.type) else 0.0
 
     def _neighbor_overlap(
