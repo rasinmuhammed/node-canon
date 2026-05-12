@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from nodecanon.core.blocking import (
+    AbbreviationBlocker,
     NGramFingerprintBlocker,
     TokenOverlapBlocker,
     TypeCompatibilityBlocker,
@@ -266,3 +267,104 @@ class TestUnionBlocker:
         union = UnionBlocker([TokenOverlapBlocker(), TypeCompatibilityBlocker()])
         ids = _pair_ids(union.candidate_pairs(graph))
         assert ("n1", "n2") in ids
+
+
+class TestAbbreviationBlocker:
+    def test_initialism_ml_machine_learning(self) -> None:
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="ML"),
+                KGNode(id="n2", name="Machine Learning"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker().candidate_pairs(graph))
+        assert ("n1", "n2") in ids
+
+    def test_initialism_llm_large_language_models(self) -> None:
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="LLM"),
+                KGNode(id="n2", name="Large Language Models"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker().candidate_pairs(graph))
+        assert ("n1", "n2") in ids
+
+    def test_initialism_ai_artificial_intelligence(self) -> None:
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="AI"),
+                KGNode(id="n2", name="Artificial Intelligence"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker().candidate_pairs(graph))
+        assert ("n1", "n2") in ids
+
+    def test_consonant_contraction_nvda_nvidia(self) -> None:
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="NVDA"),
+                KGNode(id="n2", name="NVIDIA"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker().candidate_pairs(graph))
+        assert ("n1", "n2") in ids
+
+    def test_subsequence_msft_microsoft(self) -> None:
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="MSFT"),
+                KGNode(id="n2", name="Microsoft"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker().candidate_pairs(graph))
+        assert ("n1", "n2") in ids
+
+    def test_no_self_pairs(self) -> None:
+        graph = KGGraph(
+            nodes=[KGNode(id="n1", name="ML")],
+            edges=[],
+        )
+        assert AbbreviationBlocker().candidate_pairs(graph) == []
+
+    def test_unrelated_short_names_not_paired(self) -> None:
+        # "CAT" is not an initialism, consonant form, or subsequence of "ZEBRA"
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="CAT"),
+                KGNode(id="n2", name="ZEBRA"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker().candidate_pairs(graph))
+        assert ("n1", "n2") not in ids
+
+    def test_max_abbrev_len_respected(self) -> None:
+        # "TOOLONG" (7 chars) should not be treated as abbreviation side
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="TOOLONG"),
+                KGNode(id="n2", name="Tool Long Name Here"),
+            ],
+            edges=[],
+        )
+        ids = _pair_ids(AbbreviationBlocker(max_abbrev_len=6).candidate_pairs(graph))
+        assert ("n1", "n2") not in ids
+
+    def test_no_duplicate_pairs(self) -> None:
+        graph = KGGraph(
+            nodes=[
+                KGNode(id="n1", name="ML"),
+                KGNode(id="n2", name="Machine Learning"),
+                KGNode(id="n3", name="Machine Learning Ops"),
+            ],
+            edges=[],
+        )
+        pairs = AbbreviationBlocker().candidate_pairs(graph)
+        ids = [(min(a.id, b.id), max(a.id, b.id)) for a, b in pairs]
+        assert len(ids) == len(set(ids))

@@ -154,6 +154,80 @@ class NGramFingerprintBlocker(BaseBlocker):
         return _pairs_from_index(index)
 
 
+def _strip_non_alpha(s: str) -> str:
+    return re.sub(r"[^A-Za-z]", "", s).upper()
+
+
+def _is_subsequence(short: str, long_s: str) -> bool:
+    """True if every character of `short` appears in order in `long_s`."""
+    pos = 0
+    for c in short:
+        idx = long_s.find(c, pos)
+        if idx == -1:
+            return False
+        pos = idx + 1
+    return True
+
+
+class AbbreviationBlocker(BaseBlocker):
+    """Pairs a short token with a longer name when one looks like an abbreviation
+    of the other — covering the three patterns that token/ngram blockers miss:
+
+    1. Initialism   — "ML"   → "Machine Learning"  (first letters of words)
+    2. Consonant    — "NVDA" → "NVIDIA"             (vowels stripped)
+    3. Subsequence  — "MSFT" → "Microsoft"          (chars appear in order)
+
+    max_abbrev_len: maximum alpha-character count of the short side.  6 covers
+    most real-world abbreviations without generating too many spurious pairs.
+    """
+
+    _VOWELS = re.compile(r"[AEIOU]")
+
+    def __init__(self, max_abbrev_len: int = 6) -> None:
+        self.max_abbrev_len = max_abbrev_len
+
+    def candidate_pairs(self, graph: KGGraph) -> list[tuple[KGNode, KGNode]]:
+        short: list[tuple[KGNode, str]] = []
+        long_: list[tuple[KGNode, str, str, str]] = []  # node, alpha, initials, consonants
+
+        for node in graph.nodes:
+            alpha = _strip_non_alpha(node.name)
+            if not alpha:
+                continue
+            if len(alpha) <= self.max_abbrev_len:
+                short.append((node, alpha))
+            words = [w for w in re.split(r"\W+", node.name) if w]
+            initials = "".join(w[0].upper() for w in words if w)
+            consonants = self._VOWELS.sub("", alpha)
+            long_.append((node, alpha, initials, consonants))
+
+        seen: set[tuple[str, str]] = set()
+        pairs: list[tuple[KGNode, KGNode]] = []
+
+        for abbrev_node, abbrev_alpha in short:
+            for full_node, full_alpha, initials, consonants in long_:
+                if abbrev_node.id == full_node.id:
+                    continue
+                if full_alpha == abbrev_alpha:
+                    continue  # same string — token/ngram blockers already cover this
+                if len(full_alpha) <= len(abbrev_alpha):
+                    continue  # full form must be strictly longer
+                if (
+                    abbrev_alpha == initials
+                    or abbrev_alpha == consonants
+                    or _is_subsequence(abbrev_alpha, full_alpha)
+                ):
+                    key = (
+                        min(abbrev_node.id, full_node.id),
+                        max(abbrev_node.id, full_node.id),
+                    )
+                    if key not in seen:
+                        seen.add(key)
+                        pairs.append((abbrev_node, full_node))
+
+        return pairs
+
+
 class TypeCompatibilityBlocker(BaseBlocker):
     """Post-filter: removes type-incompatible pairs from the candidate set.
 

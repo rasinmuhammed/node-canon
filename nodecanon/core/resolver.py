@@ -230,6 +230,7 @@ class Resolver:
 
     def _build_default_blocker(self) -> UnionBlocker:
         from nodecanon.core.blocking import (
+            AbbreviationBlocker,
             NGramFingerprintBlocker,
             TokenOverlapBlocker,
             TypeCompatibilityBlocker,
@@ -239,6 +240,7 @@ class Resolver:
             [
                 TokenOverlapBlocker(),
                 NGramFingerprintBlocker(),
+                AbbreviationBlocker(),
                 TypeCompatibilityBlocker(),
             ]
         )
