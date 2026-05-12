@@ -106,12 +106,40 @@ class Resolver:
         self.conflict_detector = conflict_detector or ConflictDetector()
 
     def resolve(self, graph: KGGraph) -> ResolveResult:
-        """Run the full resolution pipeline and return a ResolveResult.
+        """Run up to two resolution passes, stopping early if the graph converges.
 
-        Does not modify the input graph — all merges produce new node objects.
+        A second pass catches groups that only became neighbours after the first
+        merge — e.g. "IBM" and "IBM Corp" share the Watson node as a common
+        neighbour once "IBM Corporation" is folded in.  Does not modify the
+        input graph.
         """
         self._validate(graph)
 
+        original_node_count = len(graph.nodes)
+        original_edge_count = len(graph.edges)
+        all_merge_records: list[MergeRecord] = []
+        all_conflicts: list[MergeConflict] = []
+        current = graph
+
+        for _ in range(2):
+            prev_n = len(current.nodes)
+            pass_result = self._resolve_pass(current)
+            all_merge_records.extend(pass_result.merge_records)
+            all_conflicts.extend(pass_result.conflicts)
+            current = pass_result.graph
+            if len(current.nodes) == prev_n:
+                break  # converged — no merges happened, stop early
+
+        return ResolveResult(
+            graph=current,
+            merge_records=all_merge_records,
+            conflicts=all_conflicts,
+            original_node_count=original_node_count,
+            original_edge_count=original_edge_count,
+        )
+
+    def _resolve_pass(self, graph: KGGraph) -> ResolveResult:
+        """Single Block → Score → Match → Merge pass."""
         blocker = self.blocker or self._build_default_blocker()
         self.scorer.fit(graph)
 
@@ -123,9 +151,6 @@ class Resolver:
         pair_scores: dict[tuple[str, str], ScoreVector] = {}
         conflicts: list[MergeConflict] = []
 
-        # Score all candidates first, sort by score descending so
-        # highest-confidence merges are processed first (greedy approximation
-        # of collective resolution — see CLAUDE.md for rationale).
         scored: list[tuple[KGNode, KGNode, ScoreVector]] = [
             (a, b, self.scorer.score(a, b, graph)) for a, b in candidates
         ]
@@ -156,9 +181,6 @@ class Resolver:
             canonical = self.node_merger.select_canonical(members, graph)
             aliases = [n for n in members if n.id != canonical.id]
 
-            # Representative score: best pairwise score among canonical ↔ alias.
-            # Indirect pairs (e.g. canonical never directly scored against alias C)
-            # fall back to ScoreVector(0,...) — still safe, just less informative.
             best_sv = max(
                 (
                     pair_scores.get(
