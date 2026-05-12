@@ -235,36 +235,56 @@ class NodeScorer:
         adjacency: dict[str, list[str]],
         node_index: dict[str, KGNode],
     ) -> float:
-        """Jaccard similarity of 1-hop neighbor name sets (string, not embedding).
+        """Soft Jaccard similarity of 1-hop neighbor sets via embedding similarity.
 
-        Uses names not IDs: two duplicate nodes share neighbor NAMES even
-        though they were assigned different IDs during extraction.
+        Uses embeddings instead of exact strings so "Ginni Rometty" and
+        "G. Rometty" register as the same neighbor even though their names differ.
+        For each neighbor in A, finds its best match in B (cosine similarity),
+        averages bidirectionally.  Falls back to exact-string Jaccard when
+        embeddings are not in cache (e.g. during testing without fit()).
 
-        Excludes the two candidate nodes from each other's neighbor sets to
-        avoid circular similarity inflation when they are directly connected.
-
-        Returns 0.0 when both nodes are isolated — absence of evidence is not
-        evidence of similarity.
+        Excludes the candidate nodes from each other's sets to avoid circular
+        inflation. Returns 0.0 when both nodes are isolated.
         """
-        nbr_a = {
-            node_index[nid].name.lower()
+        nbrs_a = [
+            node_index[nid]
             for nid in adjacency.get(node_a.id, [])
             if nid != node_b.id and nid in node_index
-        }
-        nbr_b = {
-            node_index[nid].name.lower()
+        ]
+        nbrs_b = [
+            node_index[nid]
             for nid in adjacency.get(node_b.id, [])
             if nid != node_a.id and nid in node_index
-        }
+        ]
 
-        if not nbr_a and not nbr_b:
+        if not nbrs_a and not nbrs_b:
+            return 0.0
+        if not nbrs_a or not nbrs_b:
             return 0.0
 
-        union = nbr_a | nbr_b
-        if not union:
-            return 0.0
+        # Prefer soft matching via embeddings.
+        embs_a = [self._name_emb_cache.get(n.id) for n in nbrs_a]
+        embs_b = [self._name_emb_cache.get(n.id) for n in nbrs_b]
 
-        return len(nbr_a & nbr_b) / len(union)
+        if all(e is not None for e in embs_a) and all(e is not None for e in embs_b):
+            mat = np.clip(
+                np.array(embs_a, dtype=np.float32)
+                @ np.array(embs_b, dtype=np.float32).T,
+                0.0,
+                1.0,
+            )
+            # Zero matrix (e.g. fast mode with zero embeddings) → no signal.
+            if mat.max() == 0.0:
+                return 0.0
+            a_best = float(mat.max(axis=1).mean())
+            b_best = float(mat.max(axis=0).mean())
+            return (a_best + b_best) / 2
+
+        # Fallback: exact-string Jaccard.
+        names_a = {n.name.lower() for n in nbrs_a}
+        names_b = {n.name.lower() for n in nbrs_b}
+        union = names_a | names_b
+        return len(names_a & names_b) / len(union) if union else 0.0
 
     def _description_similarity(self, a: KGNode, b: KGNode) -> float:
         """Cosine similarity of description embeddings, clipped to [0, 1].
