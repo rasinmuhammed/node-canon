@@ -258,22 +258,40 @@ def run(fast: bool = False) -> BenchmarkResult:
     if fast:
         from unittest.mock import patch
 
-        import numpy as np
-
+        from nodecanon.core.matching import RuleBasedMatcher
         from nodecanon.core.scoring import NodeScorer
 
+        # Renormalized weights: semantic and description are 0 (no encoder),
+        # name / type / neighbor share the full weight budget.
+        _FAST_WEIGHTS = {
+            "name_similarity": 0.43,
+            "semantic_similarity": 0.00,
+            "type_agreement": 0.29,
+            "neighbor_overlap": 0.29,
+            "description_similarity": 0.00,
+        }
+
         def _fast_fit(self: NodeScorer, g: KGGraph) -> None:
-            rng = np.random.default_rng(42)
-            for n in g.nodes:
-                v = rng.standard_normal(384).astype(np.float32)
-                v /= np.linalg.norm(v)
-                self._name_emb_cache[n.id] = v
+            # Leave _name_emb_cache empty → _neighbor_overlap falls back to
+            # exact-string Jaccard, which is what we want in fast mode.
             self._adjacency_index = g.adjacency_index()
             self._node_index = g.node_index()
 
-        with patch.object(NodeScorer, "fit", _fast_fit):
+        def _zero(_self: NodeScorer, _a: KGNode, _b: KGNode) -> float:
+            return 0.0
+
+        scorer = NodeScorer(weights=_FAST_WEIGHTS, cache_dir=None)
+        # Pass the same weights to the matcher so threshold is evaluated
+        # on the renormalized scale, not the default one.
+        matcher = RuleBasedMatcher(threshold=0.72, weights=_FAST_WEIGHTS)
+
+        with (
+            patch.object(NodeScorer, "fit", _fast_fit),
+            patch.object(NodeScorer, "_semantic_similarity", _zero),
+            patch.object(NodeScorer, "_description_similarity", _zero),
+        ):
             t0 = time.perf_counter()
-            result = Resolver().resolve(graph)
+            result = Resolver(scorer=scorer, matcher=matcher).resolve(graph)
             elapsed = time.perf_counter() - t0
     else:
         t0 = time.perf_counter()
