@@ -131,5 +131,5 @@ class TestDump:
         assert "IBM" in dest["cypher"]
 
     def test_load_raises(self) -> None:
-        with pytest.raises(NotImplementedError, match="export-only"):
+        with pytest.raises(NotImplementedError, match="from_neo4j"):
             Neo4jAdapter().load("anything")
