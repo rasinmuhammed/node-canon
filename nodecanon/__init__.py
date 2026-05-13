@@ -1,3 +1,4 @@
+from nodecanon.core.builder import GraphBuilder
 from nodecanon.core.models import (
     KGEdge,
     KGGraph,
@@ -6,13 +7,14 @@ from nodecanon.core.models import (
     MergeRecord,
     ScoreVector,
 )
-from nodecanon.core.resolver import Resolver, ResolveResult
+from nodecanon.core.resolver import ResolveResult, Resolver
 
 __version__ = "0.1.0"
 
 __all__ = [
     "Resolver",
     "ResolveResult",
+    "GraphBuilder",
     "KGGraph",
     "KGNode",
     "KGEdge",

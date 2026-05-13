@@ -107,6 +107,7 @@ class NodeMerger:
             merged_ids=[n.id for n in aliases],
             score=score,
             strategy=strategy,
+            original_nodes=list(all_nodes),
         )
         return merged, record
 

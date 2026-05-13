@@ -58,6 +58,14 @@ class ResolveResult:
     original_node_count: int = 0
     original_edge_count: int = 0
 
+    def __repr__(self) -> str:
+        return (
+            f"ResolveResult("
+            f"{len(self.graph.nodes)} nodes, "
+            f"{len(self.merge_records)} merges, "
+            f"{len(self.conflicts)} conflicts)"
+        )
+
     def merge_report(self) -> str:
         aliases_absorbed = sum(len(r.merged_ids) for r in self.merge_records)
         edges_removed = max(0, self.original_edge_count - len(self.graph.edges))
@@ -69,6 +77,176 @@ class ResolveResult:
             f"Flagged {len(self.conflicts)} conflicts for human review",
         ]
         return "\n".join(f"→ {line}" for line in lines)
+
+    def explain(self, node_id: str) -> str:
+        """Human-readable explanation of why a node was merged (or wasn't).
+
+        Pass the canonical id or any alias id that was absorbed into a merge.
+        """
+        node_idx = self.graph.node_index()
+        node = node_idx.get(node_id)
+
+        record = next(
+            (
+                r
+                for r in self.merge_records
+                if r.canonical_id == node_id or node_id in r.merged_ids
+            ),
+            None,
+        )
+        if record is None:
+            name = node.name if node else node_id
+            return f"'{name}' ({node_id}) was not merged — it is already a canonical singleton."
+
+        canonical = node_idx.get(record.canonical_id)
+        canonical_name = canonical.name if canonical else record.canonical_id
+        sv = record.score
+        w: dict[str, float] = {
+            "name_similarity": 0.30,
+            "semantic_similarity": 0.25,
+            "type_agreement": 0.20,
+            "neighbor_overlap": 0.20,
+            "description_similarity": 0.05,
+        }
+
+        merged_names = (
+            [f'  · "{n.name}" (id: {n.id})' for n in record.original_nodes]
+            if record.original_nodes
+            else [f"  · {mid}" for mid in [record.canonical_id] + record.merged_ids]
+        )
+
+        lines = [
+            f"Canonical node: {canonical_name!r} (id: {record.canonical_id})",
+            "",
+            f"Merged from {len(merged_names)} nodes:",
+            *merged_names,
+            "",
+            "Merge evidence:",
+            f"  name_similarity:        {sv.name_similarity:.3f}  (weight {w['name_similarity']})",
+            f"  semantic_similarity:    {sv.semantic_similarity:.3f}  (weight {w['semantic_similarity']})",
+            f"  type_agreement:         {sv.type_agreement:.3f}  (weight {w['type_agreement']})",
+            f"  neighbor_overlap:       {sv.neighbor_overlap:.3f}  (weight {w['neighbor_overlap']})",
+            f"  description_similarity: {sv.description_similarity:.3f}  (weight {w['description_similarity']})",
+            f"  {'─' * 40}",
+            f"  weighted score:         {sv.weighted_sum(w):.3f}",
+            "",
+            f"Merge strategy: {record.strategy}",
+        ]
+        return "\n".join(lines)
+
+    def reject_merge(
+        self,
+        canonical_id: str,
+        restore: list[str] | None = None,
+    ) -> ResolveResult:
+        """Undo a merge, restoring original nodes as separate graph members.
+
+        Parameters
+        ----------
+        canonical_id:
+            Id of the canonical node whose merge you want to undo.
+        restore:
+            Specific alias ids to restore. Defaults to all aliases (full revert).
+
+        Returns a new ResolveResult — the original is not mutated.
+        Edges remain on the canonical node; they cannot be split back automatically.
+        """
+        record = next(
+            (r for r in self.merge_records if r.canonical_id == canonical_id), None
+        )
+        if record is None:
+            raise ValueError(
+                f"No merge record found for canonical_id={canonical_id!r}. "
+                f"Available: {[r.canonical_id for r in self.merge_records]}"
+            )
+        if not record.original_nodes:
+            raise ValueError(
+                f"No original_nodes stored in merge record for {canonical_id!r}. "
+                "Re-run resolve() to produce editable records."
+            )
+
+        restore_set = set(restore) if restore is not None else None
+        to_restore = [
+            n
+            for n in record.original_nodes
+            if n.id != canonical_id
+            and (restore_set is None or n.id in restore_set)
+        ]
+        canonical_original = next(
+            (n for n in record.original_nodes if n.id == canonical_id), None
+        )
+
+        current_idx = self.graph.node_index()
+        new_nodes = [n for n in self.graph.nodes if n.id != canonical_id]
+        new_nodes.append(canonical_original or current_idx[canonical_id])
+        new_nodes.extend(to_restore)
+
+        new_records = [r for r in self.merge_records if r.canonical_id != canonical_id]
+        return ResolveResult(
+            graph=KGGraph(nodes=new_nodes, edges=list(self.graph.edges)),
+            merge_records=new_records,
+            conflicts=list(self.conflicts),
+            original_node_count=self.original_node_count,
+            original_edge_count=self.original_edge_count,
+        )
+
+    def force_merge(self, *node_ids: str) -> ResolveResult:
+        """Manually merge nodes, overriding the resolver's decision.
+
+        Returns a new ResolveResult — the original is not mutated.
+        """
+        from nodecanon.core.merging import EdgeMerger, NodeMerger
+
+        node_idx = self.graph.node_index()
+        missing = [nid for nid in node_ids if nid not in node_idx]
+        if missing:
+            raise ValueError(
+                f"Node ids not found in the resolved graph: {missing}. "
+                f"Available (sample): {list(node_idx)[:8]}"
+            )
+        nodes_to_merge = [node_idx[nid] for nid in node_ids]
+        if len(nodes_to_merge) < 2:
+            raise ValueError("force_merge requires at least 2 node ids.")
+
+        merger = NodeMerger()
+        canonical = merger.select_canonical(nodes_to_merge, self.graph)
+        aliases = [n for n in nodes_to_merge if n.id != canonical.id]
+        dummy_score = ScoreVector(0.0, 0.0, 0.0, 0.0, 0.0)
+        merged, record = merger.merge(canonical, aliases, dummy_score, strategy="manual")
+
+        merged_id_set = {n.id for n in nodes_to_merge}
+        alias_to_canonical = {a.id: canonical.id for a in aliases}
+        remaining = [n for n in self.graph.nodes if n.id not in merged_id_set]
+        remaining.append(merged)
+
+        new_edges = EdgeMerger().merge_edges(list(self.graph.edges), alias_to_canonical)
+        return ResolveResult(
+            graph=KGGraph(nodes=remaining, edges=new_edges),
+            merge_records=self.merge_records + [record],
+            conflicts=list(self.conflicts),
+            original_node_count=self.original_node_count,
+            original_edge_count=self.original_edge_count,
+        )
+
+    def accept_conflict(self, index: int) -> ResolveResult:
+        """Accept flagged conflict at position ``index`` and force-merge the pair.
+
+        Returns a new ResolveResult with the conflict removed from the list.
+        """
+        if index < 0 or index >= len(self.conflicts):
+            raise IndexError(
+                f"Conflict index {index} is out of range — "
+                f"{len(self.conflicts)} conflict(s) available (0-based)."
+            )
+        conflict = self.conflicts[index]
+        merged = self.force_merge(conflict.node_id_a, conflict.node_id_b)
+        return ResolveResult(
+            graph=merged.graph,
+            merge_records=merged.merge_records,
+            conflicts=[c for i, c in enumerate(self.conflicts) if i != index],
+            original_node_count=self.original_node_count,
+            original_edge_count=self.original_edge_count,
+        )
 
 
 class Resolver:
