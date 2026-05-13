@@ -33,6 +33,7 @@ _STOPWORDS = frozenset(
         "had",
         "inc",
         "corp",
+        "corporation",
         "llc",
         "ltd",
         "co",
