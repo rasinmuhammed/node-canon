@@ -31,12 +31,11 @@ dependencies = [
     "rapidfuzz>=3.0",
     "jellyfish>=1.0",
     "networkx>=3.0",
-    "pandas>=2.0",
-    "pyarrow>=14.0",
     "typer>=0.12",
 ]
 
 [project.optional-dependencies]
+graphrag = ["pandas>=2.0", "pyarrow>=14.0"]
 llamaindex = ["llama-index-core>=0.10"]
 lightrag = ["lightrag-hku>=1.0"]
 neo4j = ["neo4j>=5.0"]
@@ -46,8 +45,11 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.4",
     "mypy>=1.10",
+    "pandas>=2.0",
+    "pyarrow>=14.0",
 ]
 all = [
+    "nodecanon[graphrag]",
     "nodecanon[llamaindex]",
     "nodecanon[lightrag]",
     "nodecanon[neo4j]",
@@ -58,8 +60,8 @@ all = [
 nodecanon = "nodecanon.cli.main:app"
 
 [project.urls]
-Homepage = "https://github.com/muhammedrasin/nodecanon"
-Issues = "https://github.com/muhammedrasin/nodecanon/issues"
+Homepage = "https://github.com/rasinmuhammed/node-canon"
+Issues = "https://github.com/rasinmuhammed/node-canon/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["nodecanon"]
