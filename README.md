@@ -56,36 +56,15 @@ This is not a bug in GraphRAG or LlamaIndex. It is a fundamental consequence of 
 
 nodecanon is the post-processing step that reconnects the graph.
 
-### Why existing tools do not solve this
+### What makes this problem specific
 
-Classical entity resolution tools (Splink, Dedupe, py_entitymatching) are built for tabular data: rows, fixed column schemas, attribute-by-attribute field comparison. They work well for deduplicating a CSV of customer records. They cannot use graph structure as a signal because they have no concept of it.
+LLM-extracted knowledge graphs have three properties that make entity resolution harder than the standard case:
 
-LLM-extracted knowledge graphs break all three assumptions that classical ER requires:
+- **No fixed schema**: one node has a description, another has none; one has a type label, another has five different ones extracted across chunks
+- **Graph-structured identity**: two nodes may be the same entity not because their attributes match, but because they connect to the same neighbors in the graph
+- **Schema-free types**: "COMPANY", "ORGANIZATION", "FIRM", "CORP" all mean the same thing but look different to any string or embedding comparison
 
-- **No fixed schema**: one node has a description, another has none; one has a type, another has five
-- **Graph-structured**: identity is partially determined by *who a node connects to*, not just its own attributes
-- **Schema-free types**: "COMPANY", "ORGANIZATION", "FIRM", "CORP" all mean the same thing but look different to a string matcher
-
-The built-in deduplication in GraphRAG frameworks is also insufficient. Microsoft GraphRAG groups by exact `title + type` match and silently drops mismatched duplicates (data loss, not deduplication). LightRAG calls an LLM for each ambiguous pair, which costs money on every run and re-introduces non-determinism. Neither stores provenance, neither flags conflicts for human review, and neither can be applied to an existing graph after the fact.
-
-DEG-RAG (arXiv 2510.14271, 2025) proved academically that entity resolution removes ~40% of graph volume and measurably improves downstream QA accuracy. That research code is not pip-installable and has no production API. nodecanon is the packaged implementation.
-
-nodecanon is built specifically for this data shape and this gap.
-
-### How alternatives compare
-
-| Tool | Graph-aware | Topology signal | GraphRAG adapters | No API key | pip install |
-|------|:-----------:|:---------------:|:-----------------:|:----------:|:-----------:|
-| **nodecanon** | yes | yes | yes | yes | yes |
-| Splink | no | no | no | yes | yes |
-| Dedupe | no | no | no | yes | yes |
-| py_entitymatching | no | no | no | yes | yes (stale) |
-| GraphRAG built-in | partial | no | n/a | yes | yes |
-| LightRAG built-in | partial | no | n/a | no | yes |
-| DEG-RAG / Denoise | partial | no | no | yes | no |
-| Senzing | no | no | no | yes | paid only |
-
-Splink and Dedupe are genuinely excellent at what they do: large-scale tabular record linkage with fixed schemas. If your data is structured rows, use them. For schema-less LLM-extracted graphs, they are the wrong tool.
+nodecanon is built specifically for this combination.
 
 ---
 
