@@ -374,7 +374,7 @@ class Neo4jAdapter(BaseAdapter):
         elif isinstance(destination, dict):
             destination["cypher"] = cypher
         else:
-            setattr(destination, "cypher", cypher)
+            destination.cypher = cypher
 
     def to_cypher(self, graph: KGGraph) -> str:
         """Return a Cypher script that recreates the graph in Neo4j.

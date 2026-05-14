@@ -474,40 +474,49 @@ nodecanon explain <node_id> ./resolved/
 
 ## Benchmark
 
-Synthetic dataset: 64 nodes (12 canonical entity clusters × realistic name variants), 93 edges.
-Covers easy cases (IBM / IBM Corp), medium (Samuel Altman / S. Altman), hard (LLM / large language model, NVDA / NVIDIA).
+### Real-world: DBpedia entity aliases
 
-**Fast mode** (string similarity + graph topology, no embeddings):
+Ground truth from DBpedia `wikiPageRedirects` — when Wikipedia redirects "I.B.M." → "IBM", that redirect is an entity alias.
+**287 company and person pairs**, filtered to genuine name variants (similarity ≥ 50%).
+Graph built from real DBpedia properties (founders, parent companies, employer relations) as topology anchors.
 
-| Metric | Value |
-|--------|-------|
-| Precision | **1.000** — zero wrong merges |
-| Recall | **0.949** — 37/39 true pairs caught |
-| F1 | **0.974** |
-| Time (64 nodes, CPU) | < 0.1s |
+| Condition | Pairs | Precision | Recall | F1 |
+|-----------|-------|-----------|--------|-----|
+| **With topology** (shared DBpedia anchors) | 71 | **1.000** | **0.986** | **0.993** |
+| Name-only, fast mode | 216 | 0.771 | 0.282 | 0.413 |
+| Name-only, full mode | 216 | 0.930 | 0.230 | 0.369 |
 
-**Full mode** (with all-MiniLM-L6-v2 embeddings):
+The topology result is the headline: when your GraphRAG output has shared neighbors between duplicate nodes — which is the typical case when the same entity is mentioned across multiple text chunks — nodecanon achieves near-perfect precision and recall with no API calls.
 
-Improves recall further on abbreviation-heavy graphs. First run downloads the model (~90 MB, cached locally afterwards).
-
-**Real-world alias test** (28 entity clusters, actual organization / person / concept aliases):
-
-| Metric | Value |
-|--------|-------|
-| Precision | **0.990** |
-| Recall | **0.783** |
-| F1 | **0.874** |
-
-The 22% missed recall is structurally hard cases: rebranding (Google → Alphabet), informal names (Britain → United Kingdom), short acronyms without strong embedding signal (WHO, UN). These are candidates for the optional `LLMAssistedMatcher`.
-
-Run the benchmarks yourself:
+The name-only rows cover structurally hard cases: subsidiary names ("Egmont Imagination" vs "Egmont Group"), different-language translations ("Royal Dutch" vs "Royal Netherlands"), and abbreviated forms without shared graph context. These are candidates for `LLMAssistedMatcher`.
 
 ```bash
-python benchmarks/run_benchmark.py --fast    # instant, no download
-python benchmarks/run_benchmark.py           # full, downloads model once
+python benchmarks/dbpedia_benchmark.py --fast     # downloads ~287 pairs from DBpedia, fast mode
+python benchmarks/dbpedia_benchmark.py            # full mode with sentence-transformers
+python benchmarks/dbpedia_benchmark.py --offline  # reuse cached data
+```
 
-python benchmarks/battle_test.py --aliases --no-wikidata   # real-world aliases
-python benchmarks/battle_test.py --fb15k --sample 2000     # scale test
+### Synthetic benchmark
+
+64 nodes (12 canonical entity clusters × realistic name variants), 93 edges.
+Covers: IBM / IBM Corp (easy), Samuel Altman / S. Altman (medium), LLM / large language model (hard), NVDA / NVIDIA (abbreviation).
+
+| Mode | Precision | Recall | F1 | Time |
+|------|-----------|--------|-----|------|
+| Fast (no embeddings) | **1.000** | **0.949** | **0.974** | < 0.1s |
+| Full (sentence-transformers) | 1.000 | 0.949+ | 0.974+ | ~5s |
+
+**Real-world alias test** (28 entity clusters, curated organization / person / concept aliases, topology-equipped):
+
+| Precision | Recall | F1 |
+|-----------|--------|-----|
+| **0.990** | **0.783** | **0.874** |
+
+```bash
+python benchmarks/run_benchmark.py --fast          # instant, no download
+python benchmarks/run_benchmark.py                 # full, downloads model once
+python benchmarks/battle_test.py --aliases --no-wikidata   # curated real-world aliases
+python benchmarks/battle_test.py --fb15k --sample 2000     # 14k-node scale test
 ```
 
 ---
@@ -607,6 +616,18 @@ Built-in clusters:
 | PRODUCT | SOFTWARE, SERVICE, TOOL, SYSTEM, PLATFORM |
 | EVENT | INCIDENT, OCCURRENCE |
 | CONCEPT | IDEA, TOPIC, THEORY, METHOD, TECHNIQUE |
+
+---
+
+## Known limitations
+
+**Acronym ↔ full name pairs** (e.g. `"IBM"` ↔ `"International Business Machines"`) require either strong graph topology overlap or the optional `LLMAssistedMatcher`. At the default threshold (0.75) with no shared neighbors, the weighted score peaks at ~0.72 — just below the merge threshold. If your graph has many such pairs, either lower the threshold, ensure edges are populated before resolving, or enable LLM-assisted matching for the ambiguous zone.
+
+**Rebranding / informal names** (e.g. `"Google"` ↔ `"Alphabet"`, `"Britain"` ↔ `"United Kingdom"`) score low on name similarity and require semantic or topological evidence. These are the primary driver of missed recall in the real-world alias test.
+
+**Short ambiguous acronyms** (`"WHO"`, `"UN"`, `"ML"`) can false-match unrelated entities if used in different domains in the same graph. The `TypeCompatibilityBlocker` and high type_agreement weight mitigate this, but verify results when your graph mixes domains.
+
+**Very large graphs (>50k nodes)** may hit memory pressure on the embedding matrix. Use `cache_dir` to persist embeddings between runs, and `batch_size` in the resolver's scorer to control peak memory.
 
 ---
 

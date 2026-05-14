@@ -214,8 +214,7 @@ class AbbreviationBlocker(BaseBlocker):
                 if len(full_alpha) <= len(abbrev_alpha):
                     continue  # full form must be strictly longer
                 if (
-                    abbrev_alpha == initials
-                    or abbrev_alpha == consonants
+                    abbrev_alpha in (initials, consonants)
                     or _is_subsequence(abbrev_alpha, full_alpha)
                 ):
                     key = (

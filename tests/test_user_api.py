@@ -7,9 +7,8 @@ from __future__ import annotations
 import pytest
 
 from nodecanon import GraphBuilder, KGGraph, KGNode, Resolver
-from nodecanon.core.models import KGEdge, MergeConflict, ScoreVector
+from nodecanon.core.models import MergeConflict, ScoreVector
 from nodecanon.core.resolver import ResolveResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -29,6 +28,7 @@ def _simple_resolved_result() -> ResolveResult:
         .build()
     )
     from unittest.mock import patch
+
     from nodecanon.core.scoring import NodeScorer
 
     _W = {"name_similarity": 0.43, "semantic_similarity": 0.00,
